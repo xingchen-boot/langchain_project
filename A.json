@@ -1,0 +1,60 @@
+{
+  "lc": 1,
+  "type": "constructor",
+  "id": [
+    "langchain_core",
+    "prompt_values",
+    "ChatPromptValue"
+  ],
+  "kwargs": {
+    "messages": [
+      {
+        "lc": 1,
+        "type": "constructor",
+        "id": [
+          "langchain_core",
+          "messages",
+          "SystemMessage"
+        ],
+        "kwargs": {
+          "content": "用户是前端开发程序员",
+          "additional_kwargs": {},
+          "response_metadata": {}
+        }
+      },
+      {
+        "lc": 1,
+        "type": "constructor",
+        "id": [
+          "langchain_core",
+          "messages",
+          "HumanMessage"
+        ],
+        "kwargs": {
+          "content": "用户曾经的问题",
+          "additional_kwargs": {},
+          "response_metadata": {}
+        }
+      },
+      {
+        "lc": 1,
+        "type": "constructor",
+        "id": [
+          "langchain_core",
+          "messages",
+          "HumanMessage"
+        ],
+        "kwargs": {
+          "content": [
+            {
+              "type": "text",
+              "text": "用户的问题是作为一个会vue有几段实习的前端实习生接下来应该往什么方向去努力?"
+            }
+          ],
+          "additional_kwargs": {},
+          "response_metadata": {}
+        }
+      }
+    ]
+  }
+}

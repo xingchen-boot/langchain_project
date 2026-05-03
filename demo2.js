@@ -1,35 +1,57 @@
-import express from "express";
-import { RunnableWithMessageHistory } from "@langchain/core/runnables";
-import { getUserChatChain } from "./utils/chain.js";
-import { getUserHistory } from "./utils/index.js";
-import { ChatMessageHistory } from "@langchain/community/stores/message/in_memory";
+import { ChatOpenAI } from "@langchain/openai";
+import { customCalc, toolMap } from "./tools.js";
+import { HumanMessage, mapChatMessagesToStoredMessages, ToolMessage } from "@langchain/core/messages";
 import fs from "fs"
-import { get } from "http";
-import { writeUserHistory } from "./utils/index.js";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { MessagesPlaceholder } from "@langchain/core/prompts";
 
-const app = express();
 
-let history = new ChatMessageHistory()
-app.get('/llm', async (req, res) => {
-    //获取用户的问题
-    const { question, userId, sessionId } = req.query;
-    const _historyArr = getUserHistory(userId, sessionId)
-    history = new ChatMessageHistory(_historyArr)
-    const chain = getUserChatChain()
-    const runnableChat = new RunnableWithMessageHistory({
-        runnable: chain,
-        getMessageHistory: () => {
-            return history
-        },
-        inputMessagesKey: 'question',
-        historyMessagesKey: 'history',
-    })
-    const result = await runnableChat.invoke({ question },{
-        configurable:{sessionId:'default'}
-    })
-    //在本次问答结束后打印一下history的记录
-    writeUserHistory(userId, sessionId, history.messages)
-    res.send(result);
+const arr = []
+// const prompt = ChatPromptTemplate.fromMessages([
+//     ["system", "你是一个有用的{role}"],
+//     new MessagesPlaceholder("history"),
+//     ["human", "{question}"],
+// ]);
+const promptWithTool = ChatPromptTemplate.fromMessages([
+    ["system", "你是一个有用的{role}"],
+    new MessagesPlaceholder("history"),
+]);
+ const model = new ChatOpenAI({
+    model: "mimo-v2.5-pro",
+    apiKey: "tp-cu143edoyu4j8q1fm857ijvgcsnrmmfe09pw8ybsweur661m",
+    configuration: {
+        baseURL: "https://token-plan-cn.xiaomimimo.com/v1",
+    },
 })
 
-app.listen(3000)
+const modelWithTools = model.bindTools([customCalc])
+
+
+async function run(mes, type = 'human') {
+    const query = type === 'human' ? new HumanMessage(mes) : new ToolMessage(mes)
+    const chain = promptWithTool.pipe(modelWithTools)
+    arr.push(query);
+    const invokeParams = {
+        role: "助手",
+        history: arr,
+    }
+
+    const res = await chain.invoke(invokeParams)
+    arr.push(res)
+    fs.writeFileSync("./result.json", JSON.stringify(mapChatMessagesToStoredMessages(arr)))
+    if (res.tool_calls && res.tool_calls.length > 0) {
+        for await (const tool of res.tool_calls) {
+            const toolName = tool.name;
+            const result = await toolMap[toolName].invoke(tool.args)
+
+            run({
+                content: result,
+                tool_call_id: tool.id
+            }, "tool")
+        }
+    }
+
+}
+run("使用天地同寿算法,a为3，b为4")
+
+
